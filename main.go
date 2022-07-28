@@ -83,12 +83,13 @@ func (prom Promotion) Calc50Off(Order Order) float64 {
 	return Order.Total * 0.5
 }
 func (prom Promotion) CalcBuy1Next1Baht(Order Order) float64 {
+	var HighestDiscount float64 = 0
 	for i := 0; i < len(Order.Items); i++ {
-		if Order.Items[i].Amount > 1 {
-			return Order.Items[i].Price - 1
+		if Order.Items[i].Amount > 1 && Order.Items[i].Price > HighestDiscount {
+			HighestDiscount = Order.Items[i].Price - 1
 		}
 	}
-	return 0
+	return HighestDiscount
 }
 func (prom Promotion) CalcHundredBhatDiscount(Order Order) float64 {
 	if Order.Total >= 1000 {
