@@ -98,7 +98,7 @@ func (prom Promotion) Buy2Get1Free(Order Order) float64 {
 	return maxamount
 }
 
-// Multiplication is faster than division
+// Since multiplication is faster than division
 func (prom Promotion) C50Off(Order Order) float64 {
 	return Order.Total * 0.5
 }
@@ -145,7 +145,7 @@ func (prom Promotion) BuyABFreeC(Order Order) float64 {
 	return MaxFreeitem
 }
 
-// The temporary array is for checking all the items that are applicable to being 50% off and only applying the Half price on the greatest item prioritizing high discount
+// The temporary variable is for checking all the items that are applicable to being 50% off and only applying the Half price on the greatest item prioritizing high discount
 func (prom Promotion) Buy1NextHalf(Order Order) float64 {
 	if len(Order.Items) < 2 {
 		return 0
