@@ -12,11 +12,13 @@ type Order struct {
 	Discount   float64     // Total discount of the order
 }
 
+//Please note that item C isn't "Added" but discount is included for item C. The promotion isn't valid if item C isn't present.
+// There should also be two seperate items of A and B. Two of A doesn't satisfy the condition of this promotion.
 type Item struct {
 	SKU               string
 	Price             float64
 	Amount            int64
-	ValidSelectedItem bool // For determining if the particular item is applicable for Buy A,B get C added for free
+	ValidSelectedItem bool // For determining if the particular item is applicable for Buy A,B get C added for free,
 	ValidFreeItem     bool // For determining if this particular item can be added to order for free in the promotion
 	ValidFiftyOff     bool // For determining if this particular SKU is selected for 50% off
 }
@@ -37,6 +39,39 @@ func (order *Order) CalcTotal() {
 	order.Total = total
 }
 
+// Total needs to be calculated before calling this function because it needs order.Total to compute the discount
+func (order *Order) CalcDiscount() {
+	// Guard cases where there are 0 items in which case there is always no discount
+	if len(order.Promotions) <= 0 || len(order.Items) == 0 {
+		order.Discount = 0
+		return
+	}
+	for i := 0; i < len(order.Promotions); i++ {
+		switch order.Promotions[i].PromID {
+		case "B2G1":
+			order.Discount = Max(order.Discount, order.Promotions[i].Buy2Get1Free(*order))
+		case "HOFF":
+			order.Discount = Max(order.Discount, order.Promotions[i].C50Off(*order))
+		case "B1N1":
+			order.Discount = Max(order.Discount, order.Promotions[i].Buy1N1B(*order))
+		case "D100":
+			order.Discount = Max(order.Discount, order.Promotions[i].C100Baht(*order))
+		case "B2I1":
+			order.Discount = Max(order.Discount, order.Promotions[i].BuyABFreeC(*order))
+		case "B1NH":
+			order.Discount = Max(order.Discount, order.Promotions[i].Buy1NextHalf(*order))
+		case "INCD":
+			order.Discount = Max(order.Discount, order.Promotions[i].DInc30(*order))
+		}
+
+	}
+}
+func Max(leftN, RightN float64) float64 {
+	if leftN > RightN {
+		return leftN
+	}
+	return RightN
+}
 func (order *Order) Print() {
 	fmt.Printf("Order ID: %s\n", order.ID)
 	fmt.Printf("Total: %.2f\n", order.Total)
@@ -45,7 +80,7 @@ func (order *Order) Print() {
 }
 
 // This function addresses edge case of two items in the order with buy2get1free. The higher item with bigger price is chosen for buy2get1free
-func (prom Promotion) Buy1Get1Free(Order Order) float64 {
+func (prom Promotion) Buy2Get1Free(Order Order) float64 {
 	var maxamount float64 = 0
 	for i := 0; i < len(Order.Items); i++ {
 		if Order.Items[i].Amount >= 2 && maxamount < Order.Items[i].Price {
@@ -55,6 +90,7 @@ func (prom Promotion) Buy1Get1Free(Order Order) float64 {
 	return maxamount
 }
 
+// Multiplication is faster than division
 func (prom Promotion) C50Off(Order Order) float64 {
 	return Order.Total * 0.5
 }
@@ -141,39 +177,5 @@ func (prom Promotion) DInc30(Order Order) float64 {
 		return 1000
 	} else {
 		return discount
-	}
-}
-
-func Max(leftN, RightN float64) float64 {
-	if leftN > RightN {
-		return leftN
-	}
-	return RightN
-}
-
-// Total needs to be calculated before calling this function because it needs order.Total to compute the discount
-func (order *Order) CalcDiscount() {
-	if len(order.Promotions) <= 0 || len(order.Items) == 0 {
-		order.Discount = 0
-		return
-	}
-	for i := 0; i < len(order.Promotions); i++ {
-		switch order.Promotions[i].PromID {
-		case "B2G1":
-			order.Discount = Max(order.Discount, order.Promotions[i].Buy1Get1Free(*order))
-		case "HOFF":
-			order.Discount = Max(order.Discount, order.Promotions[i].C50Off(*order))
-		case "B1N1":
-			order.Discount = Max(order.Discount, order.Promotions[i].Buy1N1B(*order))
-		case "D100":
-			order.Discount = Max(order.Discount, order.Promotions[i].C100Baht(*order))
-		case "B2I1":
-			order.Discount = Max(order.Discount, order.Promotions[i].BuyABFreeC(*order))
-		case "B1NH":
-			order.Discount = Max(order.Discount, order.Promotions[i].Buy1NextHalf(*order))
-		case "INCD":
-			order.Discount = Max(order.Discount, order.Promotions[i].DInc30(*order))
-		}
-
 	}
 }
