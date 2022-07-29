@@ -29,30 +29,6 @@ type Promotion struct {
 	PromID   string
 }
 
-func main() {
-	order := &Order{
-		ID: "123",
-		Items: []Item{
-			{SKU: "A", Price: 5000, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
-			{SKU: "B", Price: 30, Amount: 2, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
-			{SKU: "C", Price: 20, Amount: 2, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
-			{SKU: "D", Price: 15, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: true},
-		},
-		Promotions: []Promotion{
-			// {PromName: "Buy 2Get1Free Item", PromID: "B2G1"},
-			// {PromName: "50% Off", PromID: "HOFF"},
-			// {PromName: "Buy1 Next1 Baht", PromID: "B1N1"},
-			// {PromName: "100 Baht Off", PromID: "D100"},
-			// {PromName: "Buy 2 Get 1 Selected Item Free", PromID: "B2I1"},
-			// {PromName: "Buy 1 Get Half Price", PromID: "B1G1"},
-			{PromName: "1 15%, 2 20%, 3 30%", PromID: "INCD"},
-		},
-	}
-	order.CalcTotal()
-	order.CalcDiscount()
-	order.Print()
-}
-
 func (order *Order) CalcTotal() {
 	var total float64 = 0
 	for _, item := range order.Items {
@@ -69,7 +45,7 @@ func (order *Order) Print() {
 }
 
 // This function addresses edge case of two items in the order with buy2get1free. The higher item with bigger price is chosen for buy2get1free
-func (prom Promotion) CalcFreeItem(Order Order) float64 {
+func (prom Promotion) Buy1Get1Free(Order Order) float64 {
 	var maxamount float64 = 0
 	for i := 0; i < len(Order.Items); i++ {
 		if Order.Items[i].Amount >= 2 && maxamount < Order.Items[i].Price {
@@ -79,10 +55,10 @@ func (prom Promotion) CalcFreeItem(Order Order) float64 {
 	return maxamount
 }
 
-func (prom Promotion) Calc50Off(Order Order) float64 {
+func (prom Promotion) C50Off(Order Order) float64 {
 	return Order.Total * 0.5
 }
-func (prom Promotion) CalcBuy1Next1Baht(Order Order) float64 {
+func (prom Promotion) Buy1N1B(Order Order) float64 {
 	var HighestDiscount float64 = 0
 	for i := 0; i < len(Order.Items); i++ {
 		if Order.Items[i].Amount > 1 && Order.Items[i].Price > HighestDiscount {
@@ -91,7 +67,7 @@ func (prom Promotion) CalcBuy1Next1Baht(Order Order) float64 {
 	}
 	return HighestDiscount
 }
-func (prom Promotion) CalcHundredBhatDiscount(Order Order) float64 {
+func (prom Promotion) C100Baht(Order Order) float64 {
 	if Order.Total >= 1000 {
 		return 100
 	} else {
@@ -101,7 +77,7 @@ func (prom Promotion) CalcHundredBhatDiscount(Order Order) float64 {
 
 // The Highest Discounted FreeItem is added as Discount
 // The first Loop checks if the items that are selected for this particular promotion is greater than two
-func (prom Promotion) CalcBuy2Get1ItemFree(Order Order) float64 {
+func (prom Promotion) BuyABFreeC(Order Order) float64 {
 	if len(Order.Items) < 2 {
 		return 0
 	}
@@ -124,26 +100,21 @@ func (prom Promotion) CalcBuy2Get1ItemFree(Order Order) float64 {
 }
 
 // The temporary array is for checking all the items that are applicable to being 50% off and only applying the Half price on the greatest item prioritizing high discount
-func (prom Promotion) CalcBuy1GetHalfPrice(Order Order) float64 {
+func (prom Promotion) Buy1NextHalf(Order Order) float64 {
 	if len(Order.Items) < 1 {
 		return 0
 	}
-	var Fiftyoff []float64
+	var MaxFiftyoff float64 = 0
 	for i := 0; i < len(Order.Items); i++ {
-		if Order.Items[i].ValidFiftyOff {
-			Fiftyoff = append(Fiftyoff, Order.Items[i].Price)
+		if Order.Items[i].ValidFiftyOff && Order.Items[i].Price*0.5 > MaxFiftyoff {
+			MaxFiftyoff = Order.Items[i].Price * 0.5
 		}
 	}
-	if len(Fiftyoff) == 0 {
-		return 0
-	} else if len(Fiftyoff) == 1 {
-		return Fiftyoff[0] / 2
-	} else {
-		return Maxarr(Fiftyoff) / 2
-	}
+	return MaxFiftyoff
+
 }
 
-func (prom Promotion) CalcIncreaseDiscount(Order Order) float64 {
+func (prom Promotion) DInc30(Order Order) float64 {
 	var totalItems int64 = 0
 	for i := 0; i < len(Order.Items); i++ {
 		totalItems += Order.Items[i].Amount
@@ -179,18 +150,6 @@ func Max(leftN, RightN float64) float64 {
 	}
 	return RightN
 }
-func Maxarr(arr []float64) float64 {
-	if len(arr) <= 0 {
-		return 0
-	}
-	var max float64
-	for i := 0; i < len(arr); i++ {
-		if arr[i] > max {
-			max = arr[i]
-		}
-	}
-	return max
-}
 
 // Total needs to be calculated before calling this function because it needs order.Total to compute the discount
 func (order *Order) CalcDiscount() {
@@ -201,19 +160,19 @@ func (order *Order) CalcDiscount() {
 	for i := 0; i < len(order.Promotions); i++ {
 		switch order.Promotions[i].PromID {
 		case "B2G1":
-			order.Discount = Max(order.Discount, order.Promotions[i].CalcFreeItem(*order))
+			order.Discount = Max(order.Discount, order.Promotions[i].Buy1Get1Free(*order))
 		case "HOFF":
-			order.Discount = Max(order.Discount, order.Promotions[i].Calc50Off(*order))
+			order.Discount = Max(order.Discount, order.Promotions[i].C50Off(*order))
 		case "B1N1":
-			order.Discount = Max(order.Discount, order.Promotions[i].CalcBuy1Next1Baht(*order))
+			order.Discount = Max(order.Discount, order.Promotions[i].Buy1N1B(*order))
 		case "D100":
-			order.Discount = Max(order.Discount, order.Promotions[i].CalcHundredBhatDiscount(*order))
+			order.Discount = Max(order.Discount, order.Promotions[i].C100Baht(*order))
 		case "B2I1":
-			order.Discount = Max(order.Discount, order.Promotions[i].CalcBuy2Get1ItemFree(*order))
-		case "B1G1":
-			order.Discount = Max(order.Discount, order.Promotions[i].CalcBuy1GetHalfPrice(*order))
+			order.Discount = Max(order.Discount, order.Promotions[i].BuyABFreeC(*order))
+		case "B1NH":
+			order.Discount = Max(order.Discount, order.Promotions[i].Buy1NextHalf(*order))
 		case "INCD":
-			order.Discount = Max(order.Discount, order.Promotions[i].CalcIncreaseDiscount(*order))
+			order.Discount = Max(order.Discount, order.Promotions[i].DInc30(*order))
 		}
 
 	}

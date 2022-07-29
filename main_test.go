@@ -89,7 +89,7 @@ func TestMain(t *testing.T) {
 				{SKU: "C", Price: 2000, Amount: 2, ValidSelectedItem: true, ValidFreeItem: false, ValidFiftyOff: false},
 			},
 			Promotions: []Promotion{
-				{PromName: "Buy 2 Get 1 Item Free", PromID: "B2I1"},
+				{PromName: "Buy A, B Get C Free", PromID: "B2I1"},
 			},
 		}
 		order.CalcTotal()
@@ -108,12 +108,12 @@ func TestMain(t *testing.T) {
 				{SKU: "B", Price: 3000, Amount: 3, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: true},
 			},
 			Promotions: []Promotion{
-				{PromName: "Buy 1 Get 1 Half Price", PromID: "B1G1"},
+				{PromName: "Buy 1 Get 1 Half Price", PromID: "B1NH"},
 			},
 		}
 		order.CalcTotal()
 		order.CalcDiscount()
-		// The discount should be 1500 because "B is a valid 50% off item and there is one other item which is A"."
+		// The discount should be 1500 because "B is a valid 50% off item and there is one other item which is A, or other instances of B itself"."
 		if order.Discount != 1500 {
 			t.Errorf("Expected discount to be 1500, got %f", order.Discount)
 		}
