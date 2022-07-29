@@ -40,6 +40,7 @@ func (order *Order) CalcTotal() {
 }
 
 // Total needs to be calculated before calling this function because it needs order.Total to compute the discount
+// In the Edge case of two promotions having the same dicscount, the left will be chosen which means order.Discount will not be changed
 func (order *Order) CalcDiscount() {
 	// Guard cases where there are 0 items in which case there is always no discount
 	if len(order.Promotions) <= 0 || len(order.Items) == 0 {
@@ -66,11 +67,16 @@ func (order *Order) CalcDiscount() {
 
 	}
 }
-func Max(leftN, RightN float64) float64 {
-	if leftN > RightN {
+
+// Basic Max comparison function for making the code easier to read
+func Max(leftN, rightN float64) float64 {
+	if leftN == rightN {
 		return leftN
 	}
-	return RightN
+	if leftN > rightN {
+		return leftN
+	}
+	return rightN
 }
 func (order *Order) Print() {
 	fmt.Printf("Order ID: %s\n", order.ID)
@@ -147,7 +153,6 @@ func (prom Promotion) Buy1NextHalf(Order Order) float64 {
 		}
 	}
 	return MaxFiftyoff
-
 }
 
 func (prom Promotion) DInc30(Order Order) float64 {

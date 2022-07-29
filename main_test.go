@@ -5,7 +5,7 @@ import (
 )
 
 func TestBuy2Get1Free(t *testing.T) {
-	t.Run("Applicable(Positive)", func(t *testing.T) {
+	t.Run("Applicable", func(t *testing.T) {
 		order := Order{
 			ID: "123",
 			Items: []Item{
@@ -25,7 +25,7 @@ func TestBuy2Get1Free(t *testing.T) {
 			t.Errorf("Expected discount to be 30, got %f", order.Discount)
 		}
 	})
-	t.Run("Not Applicable(Negative)", func(t *testing.T) {
+	t.Run("Not Applicable", func(t *testing.T) {
 		order := Order{
 			ID: "123",
 			Items: []Item{
@@ -44,7 +44,7 @@ func TestBuy2Get1Free(t *testing.T) {
 	})
 }
 func Test50percentoff(t *testing.T) {
-	t.Run("Applicable(Positive)", func(t *testing.T) {
+	t.Run("Applicable", func(t *testing.T) {
 		order := Order{
 			ID: "1",
 			Items: []Item{
@@ -62,7 +62,7 @@ func Test50percentoff(t *testing.T) {
 			t.Errorf("Expected discount to be 7000, got %f", order.Discount)
 		}
 	})
-	t.Run("Not Applicable(Negative)", func(t *testing.T) {
+	t.Run("Not Applicable", func(t *testing.T) {
 		order := Order{
 			ID:    "1",
 			Items: []Item{},
@@ -80,7 +80,7 @@ func Test50percentoff(t *testing.T) {
 }
 
 func TestBuy1GetNext1Baht(t *testing.T) {
-	t.Run("Applicable(Positive)", func(t *testing.T) {
+	t.Run("Applicable", func(t *testing.T) {
 		order := Order{
 			ID: "1",
 			Items: []Item{
@@ -98,7 +98,7 @@ func TestBuy1GetNext1Baht(t *testing.T) {
 			t.Errorf("Expected discount to be 7000, got %f", order.Discount)
 		}
 	})
-	t.Run("Not Applicable(Negative)", func(t *testing.T) {
+	t.Run("Not Applicable", func(t *testing.T) {
 		order := Order{
 			ID: "1",
 			Items: []Item{
@@ -118,7 +118,7 @@ func TestBuy1GetNext1Baht(t *testing.T) {
 }
 
 func TestHundredBahtDiscount(t *testing.T) {
-	t.Run("Applicable(positive)", func(t *testing.T) {
+	t.Run("Applicable", func(t *testing.T) {
 		order := Order{
 			ID: "1",
 			Items: []Item{
@@ -137,7 +137,7 @@ func TestHundredBahtDiscount(t *testing.T) {
 			t.Errorf("Expected discount to be 999, got %f", order.Discount)
 		}
 	})
-	t.Run("Not Applicable(Positive)", func(t *testing.T) {
+	t.Run("Not Applicable", func(t *testing.T) {
 		order := Order{
 			ID: "1",
 			Items: []Item{
@@ -161,7 +161,7 @@ func TestHundredBahtDiscount(t *testing.T) {
 
 func TestBuyABGetC(t *testing.T) {
 	// TODO: Edge case where order is Valid selected item as well as free item.
-	t.Run("Applicable(positive)", func(t *testing.T) {
+	t.Run("Applicable", func(t *testing.T) {
 		order := Order{
 			ID: "1",
 			Items: []Item{
@@ -180,7 +180,7 @@ func TestBuyABGetC(t *testing.T) {
 			t.Errorf("Expected discount to be 3000, got %f", order.Discount)
 		}
 	})
-	t.Run("Not Applicable(negative)", func(t *testing.T) {
+	t.Run("Not Applicable", func(t *testing.T) {
 		order := Order{
 			ID: "1",
 			Items: []Item{
@@ -198,6 +198,26 @@ func TestBuyABGetC(t *testing.T) {
 			t.Errorf("Expected discount to be 0, got %f", order.Discount)
 		}
 	})
+	t.Run("Edge Case: A, B items are in order but not C", func(t *testing.T) {
+		order := Order{
+			ID: "1",
+			Items: []Item{
+				{SKU: "A", Price: 5000, Amount: 1, ValidSelectedItem: true, ValidFreeItem: false, ValidFiftyOff: false},
+				{SKU: "B", Price: 3000, Amount: 3, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+				{SKU: "C", Price: 2000, Amount: 2, ValidSelectedItem: true, ValidFreeItem: false, ValidFiftyOff: false},
+			},
+			Promotions: []Promotion{
+				{PromName: "Buy A, B Get C Free", PromID: "B2I1"},
+			},
+		}
+		order.CalcTotal()
+		order.CalcDiscount()
+		// The discount should be 0 because there aren't isn't a item(C) in this order which can be used for the promotion, item C needs (ValidFreeItem set to true)
+		if order.Discount != 0 {
+			t.Errorf("Expected discount to be 0, got %f", order.Discount)
+		}
+	})
+
 }
 func TestBuy1Get1Half(t *testing.T) {
 	// For this prmotion to work, there needs to be one item and another item that has the field ValidFiftyOff
@@ -319,6 +339,28 @@ func TestIncreasingDiscount(t *testing.T) {
 
 func TestMultiplePromotions(t *testing.T) {
 	// Testing for multiple promotions in a single order
+	t.Run("Half Discount is highest promotion among 3", func(t *testing.T) {
+		order := Order{
+			ID: "5",
+			Items: []Item{
+				{SKU: "A", Price: 500, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+				{SKU: "B", Price: 30.5, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+				{SKU: "C", Price: 20.78, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+				{SKU: "D", Price: 15.12, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+			},
+			Promotions: []Promotion{
+				{PromName: "Buy2Get1Free", PromID: "B2G1"},
+				{PromName: "Discount 50% off", PromID: "HOFF"},
+				{PromName: "Buy 1 get 15%, Buy 2 get 20%, Buy 3 get 30%", PromID: "INCD"},
+			},
+		}
+		order.CalcTotal()
+		order.CalcDiscount()
+		// Since the order has multiple discounts , the second discount which is 50% is the maximum discount hence it is chosen
+		if order.Discount != 283.2 {
+			t.Errorf("Expected discount to be 283.2, got %f", order.Discount)
+		}
+	})
 	t.Run("Increasing Discount is highest promotion among 3", func(t *testing.T) {
 		order := Order{
 			ID: "5",
@@ -329,16 +371,34 @@ func TestMultiplePromotions(t *testing.T) {
 				{SKU: "D", Price: 15.12, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
 			},
 			Promotions: []Promotion{
-				{PromName: "Buy2Get1Free", PromID: "B2G1F"},
-				{PromName: "Discount 50% off", PromID: "C50OFF"},
+				{PromName: "Buy2Get1Free", PromID: "B2G1"},
 				{PromName: "Buy 1 get 15%, Buy 2 get 20%, Buy 3 get 30%", PromID: "INCD"},
 			},
 		}
 		order.CalcTotal()
 		order.CalcDiscount()
-		// Since the order has multiple discounts , the third discount which is 30% is the maximum discount hence it is chosen
+		// Since the order has multiple discounts , the increasing discount is chosen. the item has more than 3 times so the discount is at a maximum of 30%
 		if order.Discount != 169.92 {
-			t.Errorf("Expected discount to be 0, got %f", order.Discount)
+			t.Errorf("Expected discount to be 169.92, got %f", order.Discount)
+		}
+	})
+	t.Run("Edge case: Two promotions have the same amount of discount", func(t *testing.T) {
+		order := Order{
+			ID: "5",
+			Items: []Item{
+				{SKU: "A", Price: 600, Amount: 2, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+			},
+			Promotions: []Promotion{
+				{PromName: "Buy2Get1Free", PromID: "B2G1"},
+				{PromName: "Discount 50% off", PromID: "HOFF"},
+				{PromName: "Buy 1 get 15%, Buy 2 get 20%, Buy 3 get 30%", PromID: "INCD"},
+			},
+		}
+		order.CalcTotal()
+		order.CalcDiscount()
+		// Since the order has multiple discounts with same amount of discount, the left will be chosen. Discount will always remain the same in this case
+		if order.Discount != 600 {
+			t.Errorf("Expected discount to be 600, got %f", order.Discount)
 		}
 	})
 }
