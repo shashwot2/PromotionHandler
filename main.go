@@ -23,9 +23,9 @@ type Item struct {
 	ValidFiftyOff     bool // For determining if this particular SKU is selected for 50% off
 }
 
-// This design relies on PromID calling the methods of the Promotion struct. These are like the voucher codes used in the store.
+// This design relies on PromID calling the methods of the Promotion struct. PromIDs are like the voucher codes used in the store.
 // If Certain PromID's are included in the Object, the methods will be carried out when calculating The maximum discount
-// Inorder to keep it efficient, Only PromID's applied to the Order struct should be included.
+// Inorder to keep it efficient, Only PromID's that are applied to the specific Order should be included.
 type Promotion struct {
 	PromName string
 	PromID   string
@@ -39,8 +39,9 @@ func (order *Order) CalcTotal() {
 	order.Total = total
 }
 
-// Total needs to be calculated before calling this function because it needs order.Total to compute the discount
-// In the Edge case of two promotions having the same dicscount, the left will be chosen which means order.Discount will not be changed
+// Total needs to be calculated before calling this function because methods need order.Total to compute the discount
+// In the Edge case of two promotions having the same discount, the left will be chosen which means order.Discount will not be changed
+// More promotion should be added in this function to calculate the discount
 func (order *Order) CalcDiscount() {
 	// Guard cases where there are 0 items in which case there is always no discount
 	if len(order.Promotions) <= 0 || len(order.Items) == 0 {
@@ -85,11 +86,12 @@ func (order *Order) Print() {
 	fmt.Printf("Total Payable: %.2f\n", order.Total-order.Discount)
 }
 
-// This function addresses edge case of two items in the order with buy2get1free. The higher item with bigger price is chosen for buy2get1free
+// This implementation needs a minimum of 3 amounts of a particular item to take into effect. The discount will be equal to one item's price.
+// This function addresses edge case of two items in the order with buy2get1free with amount greater than 3. The higher item with bigger price is chosen for buy2get1free
 func (prom Promotion) Buy2Get1Free(Order Order) float64 {
 	var maxamount float64 = 0
 	for i := 0; i < len(Order.Items); i++ {
-		if Order.Items[i].Amount >= 2 && maxamount < Order.Items[i].Price {
+		if Order.Items[i].Amount >= 3 && maxamount < Order.Items[i].Price {
 			maxamount = Order.Items[i].Price
 		}
 	}
@@ -100,6 +102,8 @@ func (prom Promotion) Buy2Get1Free(Order Order) float64 {
 func (prom Promotion) C50Off(Order Order) float64 {
 	return Order.Total * 0.5
 }
+
+// Buy 1 Next item at 1 Baht is only applicable for same item. It prevents misuse in practical cases like people buying a cheap item to get another at a huge price
 func (prom Promotion) Buy1N1B(Order Order) float64 {
 	var HighestDiscount float64 = 0
 	for i := 0; i < len(Order.Items); i++ {
@@ -143,7 +147,7 @@ func (prom Promotion) BuyABFreeC(Order Order) float64 {
 
 // The temporary array is for checking all the items that are applicable to being 50% off and only applying the Half price on the greatest item prioritizing high discount
 func (prom Promotion) Buy1NextHalf(Order Order) float64 {
-	if len(Order.Items) < 1 {
+	if len(Order.Items) < 2 {
 		return 0
 	}
 	var MaxFiftyoff float64 = 0
@@ -155,6 +159,7 @@ func (prom Promotion) Buy1NextHalf(Order Order) float64 {
 	return MaxFiftyoff
 }
 
+// DInc30 expanded is Discount increment till 30. If there are 3 or more items then the discount is 30% of the total.
 func (prom Promotion) DInc30(Order Order) float64 {
 	var totalItems int64 = 0
 	for i := 0; i < len(Order.Items); i++ {

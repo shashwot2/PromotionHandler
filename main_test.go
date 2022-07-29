@@ -4,15 +4,14 @@ import (
 	"testing"
 )
 
+// Applicable or Not applicable are normal test cases
 func TestBuy2Get1Free(t *testing.T) {
 	t.Run("Applicable", func(t *testing.T) {
 		order := Order{
 			ID: "123",
 			Items: []Item{
-				{SKU: "A", Price: 5000, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
-				{SKU: "B", Price: 30, Amount: 2, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
-				{SKU: "C", Price: 20, Amount: 2, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
-				{SKU: "D", Price: 15, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: true},
+				{SKU: "B", Price: 30.5, Amount: 3, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+				{SKU: "D", Price: 15.5, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: true},
 			},
 			Promotions: []Promotion{
 				{PromName: "Buy 2Get1Free Item", PromID: "B2G1"},
@@ -20,8 +19,8 @@ func TestBuy2Get1Free(t *testing.T) {
 		}
 		order.CalcTotal()
 		order.CalcDiscount()
-		// Since SKU B, SKU C has 30 Baht with 2 Amount, the discount is 30 Baht.
-		if order.Discount != 30 {
+		// Since SKU B, SKU C has 30 Baht with 3 Amount, the discount is 30 Baht.
+		if order.Discount != 30.5 {
 			t.Errorf("Expected discount to be 30, got %f", order.Discount)
 		}
 	})
@@ -37,13 +36,70 @@ func TestBuy2Get1Free(t *testing.T) {
 		}
 		order.CalcTotal()
 		order.CalcDiscount()
-		// The Promotion is not applicable for this order because there is only 1 item.
+		// The Promotion is not applicable for this order because there is only 1 item with 1 amount.
 		if order.Discount != 0 {
 			t.Errorf("Expected discount to be 0, got %f", order.Discount)
 		}
 	})
+	t.Run("Case: Two items with amount greater than or equal to 3", func(t *testing.T) {
+		order := Order{
+			ID: "123",
+			Items: []Item{
+				{SKU: "A", Price: 5000, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+				{SKU: "B", Price: 30, Amount: 4, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+				{SKU: "C", Price: 20, Amount: 3, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+				{SKU: "D", Price: 15, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: true},
+			},
+			Promotions: []Promotion{
+				{PromName: "Buy 2Get1Free Item", PromID: "B2G1"},
+			},
+		}
+		order.CalcTotal()
+		order.CalcDiscount()
+		// Since SKU B, SKU C has 30 Baht with 4 and 3 Amount respectively, the greater value is 30 so the discount is 30 Baht.
+		if order.Discount != 30 {
+			t.Errorf("Expected discount to be 30, got %f", order.Discount)
+		}
+	})
+	t.Run("Case: Three items but only 1 unit(amount) of each ", func(t *testing.T) {
+		order := Order{
+			ID: "123",
+			Items: []Item{
+				{SKU: "A", Price: 15000, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+				{SKU: "B", Price: 30, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+				{SKU: "C", Price: 20, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+			},
+			Promotions: []Promotion{
+				{PromName: "Buy 2Get1Free Item", PromID: "B2G1"},
+			},
+		}
+		order.CalcTotal()
+		order.CalcDiscount()
+		// The Promotion is not applicable for this order because there is only 1 of each. There needs to be 3 or greater amount for either item to be applicable for Buy2Get1Free promotion
+		if order.Discount != 0 {
+			t.Errorf("Expected discount to be 0, got %f", order.Discount)
+		}
+	})
+	t.Run("Case: One item with 3 amount", func(t *testing.T) {
+		order := Order{
+			ID: "123",
+			Items: []Item{
+				{SKU: "A", Price: 1500, Amount: 3, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+			},
+			Promotions: []Promotion{
+				{PromName: "Buy 2Get1Free Item", PromID: "B2G1"},
+			},
+		}
+		order.CalcTotal()
+		order.CalcDiscount()
+		// This promotion is applied because there are two units of SKU A. The discount is 1500 Baht.
+		if order.Discount != 1500 {
+			t.Errorf("Expected discount to be 1500, got %f", order.Discount)
+		}
+	})
 }
 func Test50percentoff(t *testing.T) {
+	// This promotion doesn't have a specific conditions for it because it is applied regardless of conditions
 	t.Run("Applicable", func(t *testing.T) {
 		order := Order{
 			ID: "1",
@@ -110,7 +166,26 @@ func TestBuy1GetNext1Baht(t *testing.T) {
 		}
 		order.CalcTotal()
 		order.CalcDiscount()
-		// The discount should is invalid because there is only 1 item which is not applicable to the promotion.
+		// The discount is invalid because there is only 1 item which is not applicable to the promotion.
+		if order.Discount != 0 {
+			t.Errorf("Expected discount to be 0, got %f", order.Discount)
+		}
+	})
+	t.Run("Case: Only 1 Amount in every item in order", func(t *testing.T) {
+		order := Order{
+			ID: "1",
+			Items: []Item{
+				{SKU: "A", Price: 500, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+				{SKU: "B", Price: 100, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+				{SKU: "C", Price: 20, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+			},
+			Promotions: []Promotion{
+				{PromName: "Buy1 Get Next 1 Baht", PromID: "B1N1"},
+			},
+		}
+		order.CalcTotal()
+		order.CalcDiscount()
+		// The promotion is invalid because there is only 1 amount in each item which is not applicable to the promotion.
 		if order.Discount != 0 {
 			t.Errorf("Expected discount to be 0, got %f", order.Discount)
 		}
@@ -127,14 +202,14 @@ func TestHundredBahtDiscount(t *testing.T) {
 				{SKU: "C", Price: 2000, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
 			},
 			Promotions: []Promotion{
-				{PromName: "Hundred Bhatt Discount", PromID: "D100"},
+				{PromName: "Hundred Baht Discount", PromID: "D100"},
 			},
 		}
 		order.CalcTotal()
 		order.CalcDiscount()
-		// The discount should be 100 Baht because total is 5000 bhatt and the discount is 100 bhatt
+		// The discount should be 100 Baht because total is 5000 Baht and the discount is 100 Baht
 		if order.Discount != 100 {
-			t.Errorf("Expected discount to be 999, got %f", order.Discount)
+			t.Errorf("Expected discount to be 100, got %f", order.Discount)
 		}
 	})
 	t.Run("Not Applicable", func(t *testing.T) {
@@ -146,7 +221,7 @@ func TestHundredBahtDiscount(t *testing.T) {
 				{SKU: "C", Price: 200, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
 			},
 			Promotions: []Promotion{
-				{PromName: "Hundred Bhatt Discount", PromID: "D100"},
+				{PromName: "Hundred Baht Discount", PromID: "D100"},
 			},
 		}
 		order.CalcTotal()
@@ -154,6 +229,23 @@ func TestHundredBahtDiscount(t *testing.T) {
 		// The discount should be 0 Baht because the total of the order is 800 and does not exceed 1000 baht
 		if order.Discount != 0 {
 			t.Errorf("Expected discount to be 0, got %f", order.Discount)
+		}
+	})
+	t.Run("Case: Only 1 item totaling to 1000 in order", func(t *testing.T) {
+		order := Order{
+			ID: "1",
+			Items: []Item{
+				{SKU: "A", Price: 1000, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
+			},
+			Promotions: []Promotion{
+				{PromName: "Hundred Baht Discount", PromID: "D100"},
+			},
+		}
+		order.CalcTotal()
+		order.CalcDiscount()
+		// The discount should be 100 Baht even if there is only 1 item because it still totals to 1000 baht
+		if order.Discount != 100 {
+			t.Errorf("Expected discount to be 100, got %f", order.Discount)
 		}
 	})
 
@@ -198,7 +290,7 @@ func TestBuyABGetC(t *testing.T) {
 			t.Errorf("Expected discount to be 0, got %f", order.Discount)
 		}
 	})
-	t.Run("Edge Case: A, B items are in order but not C", func(t *testing.T) {
+	t.Run("Case: A, B items are in order but not C", func(t *testing.T) {
 		order := Order{
 			ID: "1",
 			Items: []Item{
@@ -215,6 +307,26 @@ func TestBuyABGetC(t *testing.T) {
 		// The discount should be 0 because there aren't isn't a item(C) in this order which can be used for the promotion, item C needs (ValidFreeItem set to true)
 		if order.Discount != 0 {
 			t.Errorf("Expected discount to be 0, got %f", order.Discount)
+		}
+	})
+	t.Run("Case: A, B are in order but there are two C(free items)'s in order", func(t *testing.T) {
+		order := Order{
+			ID: "1",
+			Items: []Item{
+				{SKU: "A", Price: 5000, Amount: 1, ValidSelectedItem: true, ValidFreeItem: false, ValidFiftyOff: false},
+				{SKU: "B", Price: 3000, Amount: 3, ValidSelectedItem: false, ValidFreeItem: true, ValidFiftyOff: false},
+				{SKU: "C", Price: 2000, Amount: 2, ValidSelectedItem: true, ValidFreeItem: false, ValidFiftyOff: false},
+				{SKU: "D", Price: 2000, Amount: 2, ValidSelectedItem: true, ValidFreeItem: true, ValidFiftyOff: false},
+			},
+			Promotions: []Promotion{
+				{PromName: "Buy A, B Get C Free", PromID: "B2I1"},
+			},
+		}
+		order.CalcTotal()
+		order.CalcDiscount()
+		// The discount should be 3000 because SKU "B" is a higher priced free item than SKU "D"
+		if order.Discount != 3000 {
+			t.Errorf("Expected discount to be 3000, got %f", order.Discount)
 		}
 	})
 
@@ -257,6 +369,59 @@ func TestBuy1Get1Half(t *testing.T) {
 			t.Errorf("Expected discount to be 0, got %f", order.Discount)
 		}
 	})
+	t.Run("Case: there are two items with ValidFiftyOff", func(t *testing.T) {
+		order := Order{
+			ID: "1",
+			Items: []Item{
+				{SKU: "A", Price: 3000, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: true},
+				{SKU: "B", Price: 1000, Amount: 3, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: true},
+			},
+			Promotions: []Promotion{
+				{PromName: "Buy 1 Get 1 Half Price", PromID: "B1NH"},
+			},
+		}
+		order.CalcTotal()
+		order.CalcDiscount()
+		// The discount should be 1500 because it should half off on SKU "A" because of a greater value
+		if order.Discount != 1500 {
+			t.Errorf("Expected discount to be 1500, got %f", order.Discount)
+		}
+	})
+	t.Run("Case: there are two items but with only amount 1 and ValidFifty off applying", func(t *testing.T) {
+		order := Order{
+			ID: "1",
+			Items: []Item{
+				{SKU: "A", Price: 3000, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: true},
+				{SKU: "B", Price: 1000, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: true},
+			},
+			Promotions: []Promotion{
+				{PromName: "Buy 1 Get 1 Half Price", PromID: "B1NH"},
+			},
+		}
+		order.CalcTotal()
+		order.CalcDiscount()
+		// The discount should be 1500 because it should half off on SKU "A" because of a greater value
+		if order.Discount != 1500 {
+			t.Errorf("Expected discount to be 1500, got %f", order.Discount)
+		}
+	})
+	t.Run("Case: there is one item with ValidFifty off and one amount", func(t *testing.T) {
+		order := Order{
+			ID: "1",
+			Items: []Item{
+				{SKU: "A", Price: 3000, Amount: 1, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: true},
+			},
+			Promotions: []Promotion{
+				{PromName: "Buy 1 Get 1 Half Price", PromID: "B1NH"},
+			},
+		}
+		order.CalcTotal()
+		order.CalcDiscount()
+		// The discount should be 0 because it needs one more item to work
+		if order.Discount != 0 {
+			t.Errorf("Expected discount to be 0, got %f", order.Discount)
+		}
+	})
 
 }
 
@@ -265,14 +430,7 @@ func TestIncreasingDiscount(t *testing.T) {
 		order := Order{
 			ID: "1",
 			Items: []Item{
-				{
-					SKU:               "A",
-					Price:             5000,
-					Amount:            50,
-					ValidSelectedItem: false,
-					ValidFreeItem:     false,
-					ValidFiftyOff:     false,
-				},
+				{SKU: "A", Price: 5000, Amount: 50, ValidSelectedItem: false, ValidFreeItem: false, ValidFiftyOff: false},
 			},
 			Promotions: []Promotion{
 				{PromName: "1 15%, 2 20%, 3 30%", PromID: "INCD"},
@@ -382,7 +540,7 @@ func TestMultiplePromotions(t *testing.T) {
 			t.Errorf("Expected discount to be 169.92, got %f", order.Discount)
 		}
 	})
-	t.Run("Edge case: Two promotions have the same amount of discount", func(t *testing.T) {
+	t.Run("Case: Two promotions have the same amount of discount", func(t *testing.T) {
 		order := Order{
 			ID: "5",
 			Items: []Item{
